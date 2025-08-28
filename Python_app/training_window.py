@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtWidgets import QWidget, QMainWindow, QApplication, QPushButton, QHBoxLayout, QVBoxLayout, QLabel, \
     QSizePolicy, QTextEdit, QPlainTextEdit
 from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap, QPen
-from PyQt5.QtCore import Qt, QSize, QTimer
+from PyQt5.QtCore import Qt, QSize, QTimer, QRect
 import training_window2
 
 import math
@@ -14,17 +14,21 @@ class TrainingWindow1(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Aplikacja")
+        # Get used screen parameters
+        self.app = QApplication.instance()
+        self.screen = self.app.primaryScreen()
+        self.available_height = self.screen.availableGeometry().height()
+        self.available_width = self.screen.availableGeometry().width()
+
+
         self.background = QPixmap("icons/basen3.jpg")
-        self.window_width = 1024
-        self.window_height = 600
-        self.setGeometry(100, 100, self.window_width, self.window_height)
+
 
         # Declaring buttons and labels
-
         self.heart_rate_button = QPushButton(self, text=" 74")
         self.saturation_button = QPushButton(self, text=" 98%")
-        self.time_label = QLabel("00:00", self)
+        self.parameters_buttons = [self.heart_rate_button, self.saturation_button]
+        #self.time_label = QLabel("00:00", self)
         self.heart_rate_button.setIcon(QIcon("icons/heart_rate.png"))
         self.saturation_button.setIcon(QIcon("icons/saturation.png"))
 
@@ -65,11 +69,16 @@ class TrainingWindow1(QWidget):
         self.clock_widget = QPixmap(self.size())
         self.wall_clock_timer = QTimer(self)
         self.wall_clock_timer.start(10)
-        self.x_center = 730
-        self.y_center = 600 / 2
-        self.arrow_length = 230
 
-
+        # Thickness and other
+        self.widgets_font_size = int(self.available_height *0.035)
+        self.clock_x_center = self.available_width * 0.72
+        self.clock_y_center = self.available_height * 0.5
+        self.arrow_length = self.available_height * 0.4
+        self.arrows_thickness = self.available_height * 0.035
+        self.yellow_circle_radius = int(self.available_height * 0.033)
+        self.marker_thickness_1 = self.available_height * 0.035
+        self.marker_thickness_2 = self.available_height * 0.025
 
         self.emoji_timer = QTimer(self)
         self.emoji_timer.start(1000)
@@ -85,16 +94,6 @@ class TrainingWindow1(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-
-        # Dodaj kolory do gradientu
-        # Gradient Seeting
-        gradient = QLinearGradient(0, 0, 1024, 600)
-        gradient.setColorAt(0, QColor("#0f0f0f"))
-        gradient.setColorAt(0.3, QColor("#1a1919"))
-        gradient.setColorAt(0.6, QColor("#242323"))
-        gradient.setColorAt(1, QColor("#333333"))
-        painter.fillRect(self.rect(), gradient)
-
         painter.drawPixmap(self.rect(), self.background)
 
         ## Draw number
@@ -112,10 +111,12 @@ class TrainingWindow1(QWidget):
         font.setBold(True)
         painter.setFont(font)
         painter.setPen(QPen(QColor("#b09405")))
+
+        # Painting clock minutes
         for degree, mark in angle_and_marks.items():
             angle = math.radians(degree)
-            x_coordinate = self.x_center + 180 * math.cos(angle)
-            y_coordinate = self.y_center + 180 * math.sin(angle)
+            x_coordinate = self.clock_x_center + 500 * math.cos(angle)
+            y_coordinate = self.clock_y_center + 500 * math.sin(angle)
 
             if degree == 270 or degree == 90:
                 painter.drawText(int(x_coordinate) - 20, int(y_coordinate) + 10, mark)
@@ -128,70 +129,94 @@ class TrainingWindow1(QWidget):
             elif mark == "50":
                 painter.drawText(int(x_coordinate) - 45, int(y_coordinate), mark)
 
-        painter.setPen(QPen(QColor("#696003"), 5))
+
+        #Painting clock markers
         for i in range(60):
             angle = math.radians(i * 6)
-            end_point = 250
-            if (i * 6) % 90 == 0:
-                painter.setPen(QPen(QColor("#b09405"), 17))
-                end_point = 220
-            elif (i * 6) % 30 == 0:
-                painter.setPen(QPen(QColor("#b09405"), 15))
-            else:
-                painter.setPen(QPen(QColor("#b09405"), 10))
-            x_start = int(self.x_center + end_point * math.cos(angle))
-            y_start = int(self.y_center + end_point * math.sin(angle))
+            clk_marker_start_pos = self.available_width * 0.25
+            clk_marker_end_pos = self.available_width * 0.27
 
-            x_end = int(self.x_center + 275 * math.cos(angle))
-            y_end = int(self.y_center + 275 * math.sin(angle))
+            if (i * 6) % 90 == 0:
+                painter.setPen(QPen(QColor("#edd711"), self.marker_thickness_1))
+                clk_marker_start_pos = self.available_width * 0.242
+            elif (i * 6) % 30 == 0:
+                painter.setPen(QPen(QColor("#edd711"), self.marker_thickness_2))
+                clk_marker_start_pos = self.available_width * 0.245
+            else:
+                painter.setPen(QPen(QColor("#edd711"), self.marker_thickness_2))
+            x_start = int(self.clock_x_center + clk_marker_start_pos * math.cos(angle))
+            y_start = int(self.clock_y_center + clk_marker_start_pos * math.sin(angle))
+
+            x_end = int(self.clock_x_center + clk_marker_end_pos * math.cos(angle))
+            y_end = int(self.clock_y_center + clk_marker_end_pos * math.sin(angle))
             painter.drawLine(x_start, y_start, x_end, y_end)
 
-        painter.setPen(QPen(QColor("black"), 20))
-        x_end = int(self.x_center + self.arrow_length * math.cos(self.angle_0))
-        y_end = int(self.y_center + self.arrow_length * math.sin(self.angle_0))
 
-        # Zegar lines
+        # Clock arrows settings
+        painter.setPen(QPen(QColor("black"), self.arrows_thickness))
+        x_end = int(self.clock_x_center + self.arrow_length * math.cos(self.angle_0))
+        y_end = int(self.clock_y_center + self.arrow_length * math.sin(self.angle_0))
         for i in range(4):
             if i == 1:
-                painter.setPen(QPen(QColor("#032782"), 20))  # niebieski
-                x_end = int(self.x_center + self.arrow_length * math.cos(self.angle_1))
-                y_end = int(self.y_center + self.arrow_length * math.sin(self.angle_1))
+                painter.setPen(QPen(QColor("#032782"), self.arrows_thickness))  # niebieski
+                x_end = int(self.clock_x_center + self.arrow_length * math.cos(self.angle_1))
+                y_end = int(self.clock_y_center + self.arrow_length * math.sin(self.angle_1))
             elif i == 2:
-                painter.setPen(QPen(QColor("#820903"), 20))  # czerwony
-                x_end = int(self.x_center + self.arrow_length * math.cos(self.angle_2))
-                y_end = int(self.y_center + self.arrow_length * math.sin(self.angle_2))
+                painter.setPen(QPen(QColor("#820903"), self.arrows_thickness))  # czerwony
+                x_end = int(self.clock_x_center + self.arrow_length * math.cos(self.angle_2))
+                y_end = int(self.clock_y_center + self.arrow_length * math.sin(self.angle_2))
             elif i == 3:
-                painter.setPen(QPen(QColor("#1c8203"), 20))  # zielony
-                x_end = int(self.x_center + self.arrow_length * math.cos(self.angle_3))
-                y_end = int(self.y_center + self.arrow_length * math.sin(self.angle_3))
+                painter.setPen(QPen(QColor("#1c8203"), self.arrows_thickness))  # zielony
+                x_end = int(self.clock_x_center + self.arrow_length * math.cos(self.angle_3))
+                y_end = int(self.clock_y_center + self.arrow_length * math.sin(self.angle_3))
 
-            painter.drawLine(int(self.x_center), int(self.y_center), x_end, y_end)
+            painter.drawLine(int(self.clock_x_center), int(self.clock_y_center), x_end, y_end)
 
         # Small middle circle
         painter.setPen(QPen(QColor("#d9ce04")))
         painter.setBrush(QColor("#d9ce04"))
-        radius = 20
-        painter.drawEllipse(int(self.x_center) - radius, int(self.y_center) - radius, 2 * radius, 2 * radius)
+        circle_width = int(self.yellow_circle_radius * 2)
+        circle_height = int(self.yellow_circle_radius * 2)
+        painter.drawEllipse(int(self.clock_x_center) - self.yellow_circle_radius, int(self.clock_y_center) - self.yellow_circle_radius, circle_width, circle_height)
 
+        # Laps left
         painter.setPen(QPen(QColor("white")))
         font = painter.font()
-        font.setPointSize(20)
+        font.setPointSize(self.widgets_font_size)
         font.setBold(True)
         painter.setFont(font)
+        reps_left = "6 left"
+        # 1. Zdefiniuj prostokątny obszar na tekst w dolnej części zegara.
+        # Załóżmy, że promień tarczy zegara to 250px.
+        text_box_width = 200
+        text_box_height = 100
+        # Wylicz pozycję X lewego górnego rogu pudełka, aby było na środku zegara
+        box_x = self.clock_x_center - (text_box_width / 2)
+        box_y = self.clock_y_center * 1.4
+        text_rect = QRect(int(box_x), int(box_y), text_box_width, text_box_height)
+        painter.drawText(text_rect, Qt.AlignCenter, reps_left)
 
-        painter.drawText(int(self.x_center)-50, 420, str("9 left"))
+
+        # Timer
+        self.clock_time = "00:00"
+        text_box_width = 200
+        text_box_height = 100
+        # Wylicz pozycję X lewego górnego rogu pudełka, aby było na środku zegara
+        box_x = self.clock_x_center - (text_box_width / 2)
+        box_y = self.clock_y_center * 0.4
+        text_rect = QRect(int(box_x), int(box_y), text_box_width, text_box_height)
+        painter.drawText(text_rect, Qt.AlignCenter, self.clock_time)
 
 
     def init_ui(self):
-        self.heart_rate_button.setStyleSheet("background-color: transparent;"
+        for button in self.parameters_buttons:
+            button.setStyleSheet("background-color: rgba(0, 0, 0, 0);"
+                                            "border: None;"
                                              "color: white;"
-                                             "font: bold;"
-                                             "font-size: 40px;")
+                                             "font: 30pt 'Segoe UI';"
+                                             "font-weight: bold;")
 
-        self.saturation_button.setStyleSheet("background-color: transparent;"
-                                             "color: white;"
-                                             "font: bold;"
-                                             "font-size: 40px;")
+
 
         self.start_button.setStyleSheet("background-color: #096301;"
                                              "color: white;"
@@ -209,10 +234,7 @@ class TrainingWindow1(QWidget):
                                        "padding: 10px;")
 
 
-        self.time_label.setStyleSheet("background-color: none;"
-                                         "color: white;"
-                                         "font: bold;"
-                                         "font-size: 40px;")
+
 
         self.current_set_label.setStyleSheet("background-color: none;"
                                              "color: white;"
@@ -251,7 +273,6 @@ class TrainingWindow1(QWidget):
         self.current_set_layout.addWidget(self.current_set_label)
         self.current_set_layout.addWidget(self.task_label)
         self.current_set_layout.addStretch(100)
-        self.current_set_layout.addWidget(self.time_label)
         self.current_set_layout.addStretch(73)
 
         self.middle_layout.addWidget(self.details_text_window, stretch=7)
@@ -303,7 +324,6 @@ def main():
     app = QApplication(sys.argv)
     window = TrainingWindow1()
     window.showFullScreen()
-    window.resize(1024, 600)
     sys.exit(app.exec_())
 
 
