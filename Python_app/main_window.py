@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QApplication, QPushButton, QHB
 from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap
 from PyQt5.QtCore import Qt, QSize, QTimer
 from datetime import datetime
+import start_training
 
 
 class MainWindow(QWidget):
@@ -36,13 +37,14 @@ class MainWindow(QWidget):
         self.main_layout = QVBoxLayout()
         self.time_date_layout = QHBoxLayout()
         self.lower_layout = QHBoxLayout()
-
+        self.background = QPixmap("icons/basen3.jpg")
         self.time_updating_timer = QTimer(self)
         self.time_updating_timer.start(1000)
         self.time_updating_timer.timeout.connect(self.update_time_and_date)
 
         self.layout_settings()
         self.init_ui()
+        self.connect_buttons()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -53,25 +55,37 @@ class MainWindow(QWidget):
     def init_ui(self):
         for i in range(len(self.main_buttons)):
             self.main_buttons[i].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            self.main_buttons[i].setStyleSheet("background-color: rgba(0, 0, 0, 0.8);"
-                                 "color: white;"
-                                 "font: 30px 'Segoe UI' bold;"
-                                 "font-weight: bold;"
-                                 "border-radius: 15px;")
+            self.main_buttons[i].setStyleSheet(""" 
+            QPushButton {
+                                 background-color: rgba(0, 0, 0, 0.8);
+                                 color: white;
+                                 font: 30px 'Segoe UI';
+                                 font-weight: bold;
+                                 border-radius: 15px;
+                                 }
+                                 
+            QPushButton:pressed {
+                                background-color: rgba(25, 25, 25, 0.8);
+                                /* Gdy wciśnięty, przesuwamy zawartość w dół i w prawo */
+                                padding-top: 3px;
+                                padding-left: 3px;
+    }
+            """
+            )
             self.main_buttons[i].setIcon(QIcon(self.main_buttons_icons[i]))
             self.main_buttons[i].setIconSize(QSize(80, 80))
 
 
-        self.info_button.setIcon(QIcon("icons/info_icon.png"))
+        self.info_button.setIcon(QIcon("icons/info_Icon.png"))
         self.settings_button.setIcon(QIcon("icons/settings.png"))
 
         self.settings_button.setStyleSheet("background-color: #787878;"
-                                           "background-color: rgba(0, 0, 0, 0.8);"
+                                           "background-color: rgba(0, 0, 0, 0);"
                                            "border-radius: 10px;")
 
         self.info_button.setStyleSheet("background-color: #787878;"
                                        "border-radius: 10px;"
-                                       "background-color: rgba(0, 0, 0, 0.8);")
+                                       "background-color: rgba(0, 0, 0, 0);")
         self.info_button.setIconSize(QSize(30, 30))
         self.settings_button.setIconSize(QSize(30, 30))
 
@@ -122,6 +136,14 @@ class MainWindow(QWidget):
         else:
             self.heart_rate_button.setIconSize(QSize(70, 70))
             self.saturation_button.setIconSize(QSize(70, 70))
+
+    def show_start_training(self):
+        self.start_training_window = start_training.TrainingWindow()
+        self.start_training_window.showFullScreen()
+
+
+    def connect_buttons(self):
+        self.start_training_button.clicked.connect(self.show_start_training)
 
 def main():
     app = QApplication(sys.argv)
