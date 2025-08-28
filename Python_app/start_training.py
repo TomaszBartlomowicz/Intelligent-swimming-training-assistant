@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt, QSize, QTimer
 
 import math
 import time
-
+import training_window
 
 class TrainingWindow(QWidget):
     def __init__(self):
@@ -30,6 +30,9 @@ class TrainingWindow(QWidget):
         self.training6_label = QPushButton("Training 6")
         self.buttons = [self.training1_label, self.training2_label, self.training3_label, self.training4_label,
                         self.training5_label, self.training6_label]
+
+        # TYMACZASOWE
+        self.training1_label.clicked.connect(self.show_training1)
 
         self.background = QPixmap("icons/basen3.jpg")
 
@@ -105,9 +108,14 @@ class TrainingWindow(QWidget):
         self.main_layout.addStretch(1)
         self.main_layout.addWidget(self.return_button)
         self.main_layout.addStretch(1)
-
-
         self.setLayout(self.main_layout)
+
+
+    # POKAZOWE
+    def show_training1(self):
+        self.training1_window = training_window.TrainingWindow1()
+        self.training1_window.showFullScreen()
+        self.close()
 
 def main():
     app = QApplication(sys.argv)
