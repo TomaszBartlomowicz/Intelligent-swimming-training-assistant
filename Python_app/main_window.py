@@ -3,7 +3,9 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QApplication, QPushButton, QHB
 from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap
 from PyQt5.QtCore import Qt, QSize, QTimer
 from datetime import datetime
+
 import start_training
+import plan_training
 
 
 class MainWindow(QWidget):
@@ -79,21 +81,19 @@ class MainWindow(QWidget):
         self.info_button.setIcon(QIcon("icons/info_Icon.png"))
         self.settings_button.setIcon(QIcon("icons/settings.png"))
 
-        self.settings_button.setStyleSheet("background-color: #787878;"
-                                           "background-color: rgba(0, 0, 0, 0);"
+        self.settings_button.setStyleSheet("background-color: rgba(0, 0, 0, 0);"
                                            "border-radius: 10px;")
 
-        self.info_button.setStyleSheet("background-color: #787878;"
-                                       "border-radius: 10px;"
+        self.info_button.setStyleSheet("border-radius: 10px;"
                                        "background-color: rgba(0, 0, 0, 0);")
         self.info_button.setIconSize(QSize(30, 30))
         self.settings_button.setIconSize(QSize(30, 30))
 
-        self.time_label.setStyleSheet("color: black;"
+        self.time_label.setStyleSheet("color: white;"
                                       "font: bold;"
                                       "font-size: 25px;")
 
-        self.date_label.setStyleSheet("color: black;"
+        self.date_label.setStyleSheet("color: white;"
                                       "font: bold;"
                                       "font-size: 25px;")
 
@@ -141,9 +141,13 @@ class MainWindow(QWidget):
         self.start_training_window = start_training.TrainingWindow()
         self.start_training_window.showFullScreen()
 
+    def show_plan_training(self):
+        self.plan_training_window = plan_training.PlanTraining()
+        self.plan_training_window.showFullScreen()
 
     def connect_buttons(self):
         self.start_training_button.clicked.connect(self.show_start_training)
+        self.plan_training_button.clicked.connect(self.show_plan_training)
 
 def main():
     app = QApplication(sys.argv)

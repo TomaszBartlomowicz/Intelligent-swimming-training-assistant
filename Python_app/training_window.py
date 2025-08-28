@@ -71,7 +71,7 @@ class TrainingWindow1(QWidget):
         self.wall_clock_timer.start(10)
 
         # Thickness and other
-        self.widgets_font_size = int(self.available_height *0.035)
+        self.font_size = int(self.available_height * 0.04)
         self.clock_x_center = self.available_width * 0.72
         self.clock_y_center = self.available_height * 0.5
         self.arrow_length = self.available_height * 0.4
@@ -107,27 +107,46 @@ class TrainingWindow1(QWidget):
         }
 
         font = painter.font()
-        font.setPointSize(20)
+        font.setPointSize(self.font_size)
         font.setBold(True)
         painter.setFont(font)
-        painter.setPen(QPen(QColor("#b09405")))
+        painter.setPen(QPen(QColor("yellow")))
 
         # Painting clock minutes
         for degree, mark in angle_and_marks.items():
             angle = math.radians(degree)
-            x_coordinate = self.clock_x_center + 500 * math.cos(angle)
-            y_coordinate = self.clock_y_center + 500 * math.sin(angle)
+            text_box_width = 70
+            text_box_height = 70
+            # Wylicz pozycję X lewego górnego rogu pudełka, aby było na środku zegara
 
-            if degree == 270 or degree == 90:
-                painter.drawText(int(x_coordinate) - 20, int(y_coordinate) + 10, mark)
-            elif mark == "10":
-                painter.drawText(int(x_coordinate), int(y_coordinate), mark)
-            elif mark == "20":
-                painter.drawText(int(x_coordinate), int(y_coordinate) + 25, mark)
+            if mark == "50":
+                box_x = self.clock_x_center + self.arrow_length * math.cos(angle)
+                box_y = self.clock_y_center + self.arrow_length * math.sin(angle) - text_box_height / 2
+
             elif mark == "40":
-                painter.drawText(int(x_coordinate) - 45, int(y_coordinate) + 25, mark)
-            elif mark == "50":
-                painter.drawText(int(x_coordinate) - 45, int(y_coordinate), mark)
+                box_x = self.clock_x_center + self.arrow_length * math.cos(angle)
+                box_y = self.clock_y_center + self.arrow_length * math.sin(angle) - text_box_height / 2
+
+            elif mark == "10":
+                box_x = self.clock_x_center + self.arrow_length * math.cos(angle) - text_box_width
+                box_y = self.clock_y_center + self.arrow_length * math.sin(angle) - text_box_height / 2
+
+            elif mark == "20":
+                box_x = self.clock_x_center + self.arrow_length * math.cos(angle) - text_box_width
+                box_y = self.clock_y_center + self.arrow_length * math.sin(angle) - text_box_height / 2
+
+            elif mark == "60":
+                box_x = self.clock_x_center + self.arrow_length * math.cos(angle) - text_box_width / 2
+                box_y = self.clock_y_center + self.arrow_length * math.sin(angle) + text_box_height / 2
+
+            elif mark == "30":
+                box_x = self.clock_x_center + self.arrow_length * math.cos(angle) - text_box_width / 2
+                box_y = self.clock_y_center + self.arrow_length * math.sin(angle) - text_box_height
+
+            text_rect = QRect(int(box_x), int(box_y), text_box_width, text_box_height)
+            painter.drawText(text_rect, Qt.AlignCenter, mark)
+
+
 
 
         #Painting clock markers
@@ -182,7 +201,7 @@ class TrainingWindow1(QWidget):
         # Laps left
         painter.setPen(QPen(QColor("white")))
         font = painter.font()
-        font.setPointSize(self.widgets_font_size)
+        font.setPointSize(self.font_size)
         font.setBold(True)
         painter.setFont(font)
         reps_left = "6 left"
@@ -203,7 +222,7 @@ class TrainingWindow1(QWidget):
         text_box_height = 100
         # Wylicz pozycję X lewego górnego rogu pudełka, aby było na środku zegara
         box_x = self.clock_x_center - (text_box_width / 2)
-        box_y = self.clock_y_center * 0.4
+        box_y = self.clock_y_center * 0.5
         text_rect = QRect(int(box_x), int(box_y), text_box_width, text_box_height)
         painter.drawText(text_rect, Qt.AlignCenter, self.clock_time)
 
@@ -213,7 +232,7 @@ class TrainingWindow1(QWidget):
             button.setStyleSheet("background-color: rgba(0, 0, 0, 0);"
                                             "border: None;"
                                              "color: white;"
-                                             "font: 30pt 'Segoe UI';"
+                                             "font: 50pt 'Segoe UI';"
                                              "font-weight: bold;")
 
 
@@ -254,8 +273,8 @@ class TrainingWindow1(QWidget):
                                                "padding: 10px")
 
 
-        self.heart_rate_button.setIconSize(QSize(70, 70))
-        self.saturation_button.setIconSize(QSize(70, 70))
+        self.heart_rate_button.setIconSize(QSize(90, 90))
+        self.saturation_button.setIconSize(QSize(90, 90))
 
         self.heart_rate_button.setFixedSize(220, 100)
         self.saturation_button.setFixedSize(220, 100)

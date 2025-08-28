@@ -13,8 +13,8 @@ class PlanTraining(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setGeometry(0,0, 1024, 600)
-        self.background = QPixmap("icons/basen1.jpg")
+
+        self.background = QPixmap("icons/basen3.jpg")
         self.plan_training_label = QLabel("Plan your training session here", self)
         self.plan_training_label.hide()
         self.warmup_label = QLabel("Task 1", self)
@@ -222,7 +222,7 @@ class PlanTraining(QWidget):
 def main():
     app = QApplication(sys.argv)
     window = PlanTraining()
-    window.show()
+    window.showFullScreen()
     sys.exit(app.exec_())
 
 
