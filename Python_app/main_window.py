@@ -4,14 +4,20 @@ from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap
 from PyQt5.QtCore import Qt, QSize, QTimer
 from datetime import datetime
 
+import connect_to_sensor
 import start_training
 import plan_training
+import sensor
 
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.showFullScreen()
+        self.app = QApplication.instance()
+        self.screen = QApplication.primaryScreen()
+        self.available_height = self.screen.availableGeometry().height()
+        self.available_width = self.screen.availableGeometry().width()
+
         self.setWindowTitle("SwimTracker")
         self.window_width = 1024
         self.window_height = 600
@@ -145,14 +151,29 @@ class MainWindow(QWidget):
         self.plan_training_window = plan_training.PlanTraining()
         self.plan_training_window.showFullScreen()
 
+    def show_connect_to_sensor(self):
+        window_width = int(self.available_width // 4)
+        window_height = int(self.available_height // 4)
+
+        x_cord = 500
+        y_cord = 500# Poprawione y_cord
+
+        # Przekazujemy rozmiar do konstruktora
+        self.connect_to_sensor_window = sensor.SensorWindow(window_width, window_height)
+
+        self.connect_to_sensor_window.setGeometry(0, 0, window_width, window_height)
+        self.connect_to_sensor_window.exec_()
+
     def connect_buttons(self):
+
         self.start_training_button.clicked.connect(self.show_start_training)
         self.plan_training_button.clicked.connect(self.show_plan_training)
+        self.connect_to_sensor_button.clicked.connect(self.show_connect_to_sensor)
 
 def main():
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.show()
+    window.showFullScreen()
     sys.exit(app.exec_())
 
 main()
