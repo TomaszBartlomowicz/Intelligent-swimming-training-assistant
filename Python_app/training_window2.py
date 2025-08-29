@@ -26,7 +26,7 @@ class TrainingWindow(QWidget):
 
         self.heart_rate_button = QPushButton(self, text=" 74")
         self.saturation_button = QPushButton(self, text=" 98%")
-        self.heart_rate_button.setIcon(QIcon("icons/heart_rate.png"))
+        self.parameters_buttons = [self.heart_rate_button, self.saturation_button]
         self.saturation_button.setIcon(QIcon("icons/saturation.png"))
         self.clock_time = "00:00"
         self.current_set_label = QLabel(self)
@@ -150,15 +150,12 @@ class TrainingWindow(QWidget):
         painter.drawText(text_rect, Qt.AlignCenter, self.clock_time)
 
     def init_ui(self):
-        self.heart_rate_button.setStyleSheet("background-color: transparent;"
-                                             "color: white;"
-                                             "font: bold;"
-                                             "font-size: 40px;")
-
-        self.saturation_button.setStyleSheet("background-color: transparent;"
-                                             "color: white;"
-                                             "font: bold;"
-                                             "font-size: 40px;")
+        for button in self.parameters_buttons:
+            button.setStyleSheet("background-color: rgba(0, 0, 0, 0);"
+                                 "border: None;"
+                                 "color: white;"
+                                 "font: 50pt 'Segoe UI';"
+                                 "font-weight: bold;")
 
         self.stop_button.setStyleSheet("background-color: darkred;"
                                              "color: white;"
