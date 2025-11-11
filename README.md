@@ -16,4 +16,5 @@ The system is comprised of two primary components:
     * Logging session data.
     * Delivering real-time feedback to the user.
 <img width="759" height="447" alt="image" src="https://github.com/user-attachments/assets/6dc82ed9-43d5-4a61-821f-9e4e1a44f5b3" />
+
 *image generated with ai
