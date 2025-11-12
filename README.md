@@ -29,4 +29,5 @@ A specialized application hosted on a **Raspberry Pi**, responsible for:
 
 ### 📷 Preview
 <img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/27c24d25-4538-40d5-a7df-10843922f756" />
-<img width="1280" height="720" alt="zdjecie_z_basenu" src="https://github.com/user-attachments/assets/9868db8c-958b-416b-a802-487a0cab8243" />
+
+<img width="1280" height="720" alt="998bc0f5-d971-40e8-8517-403cc63baf5c" src="https://github.com/user-attachments/assets/bc65400c-3e59-48c1-a797-3d4d17b8e500" />
