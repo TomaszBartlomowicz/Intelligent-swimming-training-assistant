@@ -16,7 +16,7 @@ import bluetooth_connection
 import os
 
 # Sub-module imports for window transitions
-import start_training, plan_training, sensor, training_history, info_window, power_off, calculate_hr_max, pace_clock
+import start_training, training_planner, sensor_connection_dialog, training_history, info_window, system_shutdown_window, hr_max_calculator, pace_clock
 
 class MainWindow(QWidget):
     """
@@ -171,7 +171,7 @@ class MainWindow(QWidget):
         State machine for window transitions.
         Handles both modal dialogs (setEnabled(False)) and full-screen windows.
         """
-        if (window == power_off.PowerOff or window == info_window.InfoDialog or window == sensor.SensorWindow):
+        if (window == system_shutdown_window.PowerOff or window == info_window.InfoDialog or window == sensor_connection_dialog.SensorWindow):
             self.setEnabled(False)
             window_width = int(self.available_width // 2)
             window_height = int(self.available_height // 2)
@@ -195,15 +195,15 @@ class MainWindow(QWidget):
     def connect_buttons(self):
         """Mapping signals to window transition slots."""
         self.start_training_button.clicked.connect(lambda: self.show_window(start_training.ChooseTraining))
-        self.plan_training_button.clicked.connect(lambda: self.show_window(plan_training.PlanTraining))
+        self.plan_training_button.clicked.connect(lambda: self.show_window(training_planner.PlanTraining))
         self.training_history_button.clicked.connect(lambda: self.show_window(training_history.TrainingHistory))
-        self.get_hr_max_button.clicked.connect(lambda: self.show_window(calculate_hr_max.CalculateHrMax))
+        self.get_hr_max_button.clicked.connect(lambda: self.show_window(hr_max_calculator.CalculateHrMax))
 
         self.pace_clock_button.clicked.connect(lambda: self.show_window(pace_clock.PaceClock))
 
-        self.connect_to_sensor_button.clicked.connect(lambda: self.show_window(sensor.SensorWindow))
+        self.connect_to_sensor_button.clicked.connect(lambda: self.show_window(sensor_connection_dialog.SensorWindow))
         self.info_button.clicked.connect(lambda: self.show_window(info_window.InfoDialog))
-        self.power_off_button.clicked.connect(lambda: self.show_window(power_off.PowerOff))
+        self.power_off_button.clicked.connect(lambda: self.show_window(system_shutdown_window.PowerOff))
 
     def closeEvent(self, event):
         """Safe shutdown sequence: disconnects BLE and restores OS cursor."""

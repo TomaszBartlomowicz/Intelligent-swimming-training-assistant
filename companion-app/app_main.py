@@ -3,7 +3,7 @@ Application entry point for the Intelligent Swimming Training Assistant.
 
 """
 
-from splash_screen import LoadingScreen
+from loading_screen import LoadingScreen
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt, QTimer
 import sys

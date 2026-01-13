@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QApplication, QPushButton, QHB
     QSizePolicy, QTextEdit, QPlainTextEdit
 from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap, QPen, QFont
 from PyQt5.QtCore import Qt, QSize, QTimer, QRect
-import training_window2
+import current_active_task
 from base_training_window import GeneralTaskWindow
 import bluetooth_connection
 import os
@@ -89,7 +89,7 @@ class NextTask(GeneralTaskWindow):
             file.write(f"-----TASK{self.task_number}-----\n")
 
         # Instantiate the active task execution window (CurrentTask)
-        self.training_window = training_window2.CurrentTask(
+        self.training_window = current_active_task.CurrentTask(
             current_directory=self.current_training_directory, 
             task_number=self.task_number
         )
