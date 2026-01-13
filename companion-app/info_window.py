@@ -1,22 +1,19 @@
-from app_config import INFO_LABEL_STYLE, OK_BUTTON_STYLE
+from app_config import INFO_LABEL_STYLE, PROJECT_PATH, OK_BUTTON_STYLE
 from PyQt5.QtWidgets import QApplication, QDialog, QLabel, QPushButton, QVBoxLayout
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QBrush, QColor, QPixmap
 import sys
 
 class InfoDialog(QDialog):
-    def __init__(self, width, height):
+    def __init__(self):
         super().__init__()
 
         self.setWindowFlags(Qt.Popup)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedSize(width, height)
 
-        self.window_width = width
-        self.window_height = height
-        self.setFixedSize(self.window_width, self.window_height)
 
-        self.agh_logo = QPixmap("icons/agh_logo.png")
+
+        self.agh_logo = QPixmap(f"{PROJECT_PATH}/icons/agh_logo.png")
         self.agh_logo = self.agh_logo.scaled(130, 130, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
 
@@ -68,9 +65,3 @@ class InfoDialog(QDialog):
         y = (self.height() - self.agh_logo.height()) // 2
         painter.drawPixmap(x, y+33, self.agh_logo)
 
-# Testowanie popup
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    dialog = InfoDialog(400, 250)
-    dialog.show()
-    sys.exit(app.exec_())

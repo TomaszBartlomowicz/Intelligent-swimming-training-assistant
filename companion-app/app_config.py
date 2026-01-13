@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication
 import sys
 from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap
 
+PROJECT_PATH = "/home/tomraspberry/Inteligent_training_asistant/aplikacja_python"
 
 ###----------------------------FONT SIZES ----------------------------###
 
@@ -20,8 +21,7 @@ MAIN_BUTTON_STYLE = """
             QPushButton {
                                  background-color: rgba(0, 0, 0, 0.7);
                                  color: white;
-                                 font: 30pt 'Segoe UI';
-                                 font-weight: bold;
+                                 font: 615 30pt 'Segoe UI';
                                  border-radius: 15px;
                                  border: 2px solid #2b2b2a;
                                  }
@@ -72,11 +72,11 @@ SAVE_BUTTON_STYLE = f"""
 
 ## --------------------- MAIN WINDOW -------------------- ###
 
-BACKGROUND = "icons/basen3.jpg"
+BACKGROUND = PROJECT_PATH + "/icons/basen3.jpg"
 
 
 
-MAIN_WINDOW_MAIN_BUTTON_ICONS = ["icons/plan.png", "icons/swimmer.png", "icons/training_history.png", "icons/heartt.png"]
+MAIN_WINDOW_MAIN_BUTTON_ICONS = [f"{PROJECT_PATH}/icons/plan.png", f"{PROJECT_PATH}/icons/swimmer.png", f"{PROJECT_PATH}/icons/training_history.png", f"{PROJECT_PATH}/icons/heartt.png"]
 
 
 MAIN_WINDOW_LOWER_BUTTONS_STYLE = """ 
@@ -93,7 +93,7 @@ MAIN_WINDOW_LOWER_BUTTONS_STYLE = """
         }
                 """
 
-MAIN_WINDOW_LOWER_BUTTONS_ICONS = ["icons/info.png", "icons/power_off.png"]
+MAIN_WINDOW_LOWER_BUTTONS_ICONS = [f"{PROJECT_PATH}/icons/info.png", f"{PROJECT_PATH}/icons/power_off.png"]
 
 SENSOR_BUTTON_STYLE = """      QPushButton {
                                     font: bold 20pt 'Segoe UI';
@@ -106,11 +106,21 @@ SENSOR_BUTTON_STYLE = """      QPushButton {
                                 }
                                 """
 
+CLOCK_BUTTON_STYLE = """      QPushButton {
+                                    background-color: rgba(255, 255, 255, 180);
+                                    border-radius: 50px;
+                                    border: 2px solid;
+                                }
+                                QPushButton:pressed {
+                                    padding-top: 3px;
+                                    padding-left: 3px;
+                                }
+                                """
+
 
                 
 TIME_DATE_STYLE = f"""color: white;
-                    font: {FONT_1}pt 'Segoe UI';
-                    font-weight: bold;"""
+                    font: 650 {FONT_1}pt 'Segoe UI';"""
 
 
 ## --------------------- PLAN TRAINING WINDOW  -------------------- ###
@@ -119,8 +129,7 @@ PLAN_WINDOW_PLUS_BUTTON_STYLE = f"""
         QPushButton {{
                         background-color: rgba(255, 255, 255, 0.6);
                         border-radius: 60px;
-                        color: white;
-                        
+                        border: 1px solid blue;
                         }}
                         
         QPushButton:pressed {{
@@ -172,27 +181,24 @@ PARAMETERS_STYLE = """
 LABELS_STYLE = f"""
             background-color: none;
             color: yellow;
-            font: bold;
-            font-size: {FONT_1}pt;
+            font: 700 35pt 'Segoe UI'
         """
 
 
 TEXT_EDIT_STYLE = f"""
                 background-color: rgba(0, 0, 0, 0.4);
                 color: white;
-                font: {FONT_2}pt 'Segoe UI';
+                font: 650 24pt 'Segoe UI';
                 border: 3px solid black;
                 border-radius: 20px;
                 padding: 10px;
-                font-weight: bold;
             """
 
 
 START_BUTTON_STYLE = f"""
             background-color: #096301;
             color: white;
-            font: bold;
-            font-size: {FONT_2}pt;
+            font: 650 24pt 'Segoe UI';
             border-radius: 10px;
             padding: 10px;
         """
@@ -201,8 +207,7 @@ START_BUTTON_STYLE = f"""
 SKIP_BUTTON_STYLE = f"""
             background-color: #3c5b73;
             color: white;
-            font: bold;
-            font-size: {FONT_2}pt;
+            font: 650 24pt 'Segoe UI';
             border-radius: 10px;
             padding: 10px;
         """
@@ -211,8 +216,7 @@ SKIP_BUTTON_STYLE = f"""
 END_BUTTON_STYLE = f"""
             background-color: #a3170d;
             color: white;
-            font: bold;
-            font-size: {FONT_2}pt;
+            font: 650 24pt 'Segoe UI';
             border-radius: 10px;
             padding: 10px;
         """
@@ -281,31 +285,89 @@ HR_MAX_LABEL_STYLE = f"""color: white;
                     font: {FONT_1}pt 'Segoe UI';
                     font-weight: bold;"""
 
-RECOVERY_LAVBEL_STYLE = f"""color: #0af5e1;
+RECOVERY_LAVBEL_STYLE = f"""color: #E0E0E0;
                     font: {FONT_5}pt 'Segoe UI';
                     font-weight: bold;"""
 
-AEROBIC_ENDURANCE_STYLE = f"""color: #25f50a;
+AEROBIC_ENDURANCE_STYLE = f"""color: #00E676;
                     font: {FONT_5}pt 'Segoe UI';
                     font-weight: bold;"""
 
-AEROBIC_CAPACITY_STYLE = f"""color: #fcdc08;
+AEROBIC_CAPACITY_STYLE = f"""color: #FFEA00;
                     font: {FONT_5}pt 'Segoe UI';
                     font-weight: bold;"""
 
-ANAEROBIC_STYLE = f"""color: #f5700a;
-                    font: {FONT_5}pt 'Segoe UI';
-                    font-weight: bold;"""
-
-
-VO2_MAX_STYLE = f"""color: #d60404;
+ANAEROBIC_STYLE = f"""color: #FF6D00;
                     font: {FONT_5}pt 'Segoe UI';
                     font-weight: bold;"""
 
 
-GET_HR_MAX_STYLE = f"""background-color: rgba(0, 0, 0, 0.8);
-                        color: red;
-                        border-radius: 10px;
-                        padding: 10px;
-                        font: {FONT_2}pt 'Segoe UI';
+VO2_MAX_STYLE = f"""color: #e00202;
+                    font: {FONT_5}pt 'Segoe UI';
+                    font-weight: bold;"""
+
+
+GET_HR_MAX_STYLE = """
+    QPushButton {
+        background-color: #2E2E2E;
+        color: #FFD740;
+        font: bold 20pt 'Segoe UI';
+        border-radius: 15px;
+        padding: 12px 25px;
+        border: 2px solid rgba(255,255,255,0.1);
+    }
+    QPushButton:hover {
+        background-color: #454545;
+    }
+    QPushButton:pressed {
+        background-color: #5A5A5A;
+        padding-top: 3px;
+        padding-left: 3px;
+    }
+"""
+
+
+
+
+## --------------------- DO YOU WANT TO DELETE ? WINDOW  -------------------- ###
+
+
+DELETE_BUTTON_STYLE = """
+                                QPushButton {
+                                    font: bold 25pt 'Segoe UI';
+                                    border-radius: 60px;
+                                    color: #8f0b0b;
+                                    border: 5px solid #8f0b0b;
+                                }
+                                QPushButton:pressed {
+                                    padding-top: 3px;
+                                    padding-left: 3px;
+                                }
+                                """
+
+
+
+CANCEL_BUTTON_STYLE2 = """
+                                QPushButton {
+                                    font: bold 25pt 'Segoe UI';
+                                    border-radius: 60px;
+                                    color: #135e09;
+                                    border: 5px solid #135e09;
+                                }
+                                QPushButton:pressed {
+                                    padding-top: 3px;
+                                    padding-left: 3px;
+                                }
+                                """
+
+
+DELETE_LABEL_STYLE = f"""color: white;
+                    font: 18pt 'Segoe UI';
+                    font-weight: bold;"""
+
+
+
+
+BATTERY_STYLE = """     color: white;
+                        font: 23pt 'Segoe UI';
                         font-weight: bold;"""

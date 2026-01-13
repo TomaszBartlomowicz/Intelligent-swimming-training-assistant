@@ -6,19 +6,23 @@ from PyQt5.QtGui import QPainter, QLinearGradient, QColor, QIcon, QPixmap
 from PyQt5.QtCore import Qt, QSize, QTimer
 from datetime import datetime
 import main_window
+from app_config import PROJECT_PATH
+
 
 class LoadingScreen(QWidget):
     def __init__(self):
         super().__init__()
         self.app = QApplication.instance()
-        self.screen = QApplication.primaryScreen()
+        self.screen = self.app.primaryScreen()
         self.available_height = self.screen.availableGeometry().height()
         self.available_width = self.screen.availableGeometry().width()
+        self.setGeometry(0, 0, self.available_width, self.available_height)
+
         self.info_label = QLabel()
-        self.agh_logo = QPixmap("icons/agh_logo.png")
+        self.agh_logo = QPixmap(f"{PROJECT_PATH}/icons/agh_logo.png")
         self.agh_logo = self.agh_logo.scaled(330, 330, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.setStyleSheet("background-color: white;")
-        self.main_window = main_window.MainWindow()
+        
         self.project_label = QLabel(self)
         self.title_label = QLabel(self)
 
@@ -28,7 +32,10 @@ class LoadingScreen(QWidget):
         QTimer.singleShot(5000, self.show_main)
 
     def show_main(self):
+        self.close()
+        self.main_window = main_window.MainWindow()
         self.main_window.showFullScreen()
+        QTimer.singleShot(50, lambda: self.main_window.setCursor(Qt.BlankCursor))
         QTimer.singleShot(500, self.close_splash_screen)
 
 
@@ -64,13 +71,3 @@ class LoadingScreen(QWidget):
     def close_splash_screen(self):
         self.close()
 
-def main():
-    app = QApplication(sys.argv)
-    splash = LoadingScreen()
-    splash.showFullScreen()
-    sys.exit(app.exec_())
-
-
-
-if __name__ == "__main__":
-    main()

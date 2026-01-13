@@ -1,165 +1,191 @@
-from PyQt5.QtWidgets import QDialog, QApplication, QPushButton, QVBoxLayout, QLabel
+"""
+Bluetooth sensor management interface for the swimming assistant sensor.
+"""
+
+from PyQt5.QtWidgets import QDialog, QApplication, QPushButton, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPainter, QBrush, QColor
-from get_parameters import start_ble, stop_ble, is_connected, reading_parameters
-
+import bluetooth_connection
+from app_config import BATTERY_STYLE
 
 class SensorWindow(QDialog):
-    def __init__(self, width, height):
+    """
+    Modal dialog for orchestrating BLE sensor connectivity.
+    
+    Implements a state machine to manage three distinct connection phases:
+    Disconnected, Connecting, and Connected, with dedicated UI feedback 
+    for each state.
+    """
+
+    def __init__(self):
+        """Initializes the sensor manager, UI widgets, and background refresh timers."""
         super().__init__()
 
         self.setWindowTitle("Sensor")
-        self.setWindowFlags(Qt.Popup)
+        self.setWindowFlags(Qt.Popup) # Frameless overlay
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.window_width = width
-        self.window_height = height
 
-        # Stany
-        self.is_connected = False
-        self.is_connecting = False
-
-        # Widgety
-        self.connect_button = QPushButton("Connect", self)
-        self.info_label = QLabel("Sensor Disconnected", self)
-        self.data_label = QLabel("", self)
-
-        # Layout
-        self.main_layout = QVBoxLayout()
-        self.setup_ui()
-
-        # Timer do odświeżania statusu
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.refresh_status)
-        self.timer.start(1000)
-
-        self.refresh_status()
-
-    def setup_ui(self):
-        self.setFixedSize(self.window_width, self.window_height)
-
-        button_size = int(self.window_width / 2.5)
-        self.connect_button.setFixedSize(button_size, button_size)
+        # --- GUI Widgets ---
+        self.connect_button = QPushButton(self)
         self.connect_button.clicked.connect(self.toggle_connection_state)
+        
+        self.title_label = QLabel("BLUETOOTH SENSOR", self)
+        self.info_label = QLabel("Sensor Disconnected", self)
+        self.battery_voltage_label = QLabel(self)
+        self.battery_percentage_label = QLabel(self)
 
-        layout = QVBoxLayout()
-        layout.addStretch(1)
-        layout.addWidget(self.info_label, alignment=Qt.AlignCenter)
-        layout.addWidget(self.data_label, alignment=Qt.AlignCenter)
-        layout.addWidget(self.connect_button, alignment=Qt.AlignCenter)
-        layout.addStretch(1)
+        # Apply specialized styles for energy telemetry
+        self.battery_voltage_label.setStyleSheet(BATTERY_STYLE)
+        self.battery_percentage_label.setStyleSheet(BATTERY_STYLE)
 
-        self.main_layout.addLayout(layout)
-        self.setLayout(self.main_layout)
+        self.layout = QVBoxLayout()
+        self.main_layout = QHBoxLayout()
+        self.create_layout()
+
+        # --- BLE States Logic ---
+        self.connected = False
+        self.connecting = False
+        self.update_ble_state()
+ 
+        # --- Background Telemetry Refresh ---
+        # Polling timer to synchronize UI with asynchronous BLE thread state
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_ble_state)
+        self.timer.timeout.connect(self.display_battery_condition)
+        self.timer.start(1000) # 1Hz refresh rate for connection and battery status
 
         self.update_ui_state()
 
-    def paintEvent(self, event):
-        """Rysuje półprzezroczyste tło"""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        brush = QBrush(QColor(38, 38, 38, 240))
-        painter.setBrush(brush)
-        painter.setPen(Qt.NoPen)
-        painter.drawRoundedRect(self.rect(), 20, 20)
+    def create_layout(self):
+        """Organizes widgets into a centered horizontal layout with battery side-indicators."""
+        self.layout.addStretch(1)
+        self.layout.addWidget(self.title_label, alignment=Qt.AlignCenter)
+        self.layout.addStretch(1)
+        self.layout.addWidget(self.info_label, alignment=Qt.AlignCenter)
+        self.layout.addStretch(1)
+        self.layout.addWidget(self.connect_button, alignment=Qt.AlignCenter)
+        self.layout.addStretch(2)
 
-    def toggle_connection_state(self):
-        """Kliknięcie przycisku Connect / Disconnect"""
-        if not self.is_connected and not self.is_connecting:
-            # Rozpocznij łączenie
-            self.is_connecting = True
-            self.connect_button.setText("Connecting...")
-            self.connect_button.setDisabled(True)
-            self.info_label.setText("Connecting to sensor...")
-            try:
-                start_ble()
-            except Exception as e:
-                self.is_connecting = False
-                self.info_label.setText(f"Connection Failed {str(e)}")
-                self.update_ui_state()
-                return
-            
-        elif self.is_connected:
-            # Rozłącz
-            self.connect_button.setText("Disconnecting...")
-            self.connect_button.setDisabled(True)
-            self.info_label.setText("Disconnecting...")
-            stop_ble()
+        self.main_layout.setAlignment(Qt.AlignCenter)
+        self.main_layout.addStretch(1)
+        self.main_layout.addWidget(self.battery_percentage_label)
+        self.main_layout.addStretch(1)
+        self.main_layout.addLayout(self.layout)
+        self.main_layout.addStretch(1)
+        self.main_layout.addWidget(self.battery_voltage_label)
+        self.main_layout.addStretch(1)
 
-    def refresh_status(self):
-        """Odświeżenie stanu BLE i danych"""
-        connected_now = is_connected()
+        fixed_width = 100 
+        self.battery_voltage_label.setFixedWidth(fixed_width)
+        self.battery_voltage_label.setAlignment(Qt.AlignCenter)
+        self.battery_percentage_label.setFixedWidth(fixed_width)
+        self.battery_percentage_label.setAlignment(Qt.AlignCenter)
 
-        # --- Łączenie ---
-        if self.is_connecting:
-            if connected_now:
-                self.is_connected = True
-                self.is_connecting = False
-                self.info_label.setText("Sensor Connected")
-                self.connect_button.setDisabled(False)
-                self.update_ui_state()
-            else:
-                self.info_label.setText("Connecting to sensor...")
-                # nadal connecting — przycisk wyłączony
-                self.connect_button.setDisabled(True)
-                self.connect_button.setText("Connecting...")
-                return
-
-        # --- Połączony ---
-        elif connected_now and not self.is_connecting:
-            self.is_connected = True
-            params = reading_parameters()
-            if params:
-                bpm, spo2 = params
-                self.data_label.setText(f"BPM: {bpm} | SpO₂: {spo2}%")
-            else:
-                self.data_label.setText("Reading data...")
-            self.info_label.setText("Sensor Connected")
-            self.connect_button.setDisabled(False)
-            self.update_ui_state()
-
-        # --- Rozłączony ---
-        else:
-            self.is_connected = False
-            self.is_connecting = False
-            self.data_label.setText("")
-            self.info_label.setText("Sensor Disconnected")
-            self.connect_button.setDisabled(False)
-            self.update_ui_state()
+        self.setLayout(self.main_layout)
 
     def update_ui_state(self):
-        """Aktualizuje wygląd przycisku i etykiet"""
-        radius = int(self.connect_button.width() / 2)
-        base_style = f"""
-        QPushButton {{
+        """
+        Dynamically updates the visual style and interactivity of the UI.
+        
+        Applies a color-coded feedback system:
+        - Amber: Connection in progress.
+        - Green: Active stable link.
+        - Red: No peripheral signal.
+        """
+        button_size = 220
+        self.connect_button.setFixedSize(button_size, button_size)
+
+        base_style = """
+        QPushButton:pressed {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding-top: 5px;
+            padding-left: 5px;
+        }
+        QPushButton {
             font: bold 20pt 'Segoe UI';
-            border-radius: {radius}px;
+            border-radius: 110px;
             border: 3px solid;
-        }}
         """
 
-        if self.is_connecting:
+        self.battery_percentage_label.hide()
+        self.battery_voltage_label.hide()
+        self.title_label.setStyleSheet("color: #b8b9ba; font: bold 16pt 'Segoe UI';")
+
+        # 1. CONNECTING State (Yellow/Amber)
+        if self.connecting:
             self.connect_button.setText("Connecting...")
-            self.connect_button.setStyleSheet(base_style + "color: gray; border-color: gray; background-color: #2c2c2c;")
+            self.connect_button.setStyleSheet(base_style + """
+                color: #FFC107; 
+                border-color: #FFC107; 
+                background-color: rgba(255, 193, 7, 0.1);
+            }""")
             self.connect_button.setDisabled(True)
-            self.info_label.setStyleSheet("color: #cccccc; font: bold 24pt 'Segoe UI';")
+            self.info_label.setStyleSheet("color: #FFC107; font: 650 22pt 'Segoe UI';")
 
-        elif self.is_connected:
+        # 2. CONNECTED State (Stable Green feedback)
+        elif self.connected:
             self.connect_button.setText("Disconnect")
-            self.connect_button.setStyleSheet(base_style + "color: #ffffff; border-color: #a2f5bf; background-color: #1e1e1e;")
-            self.info_label.setStyleSheet("color: #a2f5bf; font: bold 24pt 'Segoe UI';")
+            self.connect_button.setStyleSheet(base_style + """
+                color: #E0E0E0; 
+                border-color: #E0E0E0; 
+                background-color: transparent;
+            }""")
+            self.connect_button.setDisabled(False)
+            self.info_label.setStyleSheet("color: #00E676; font: 650 22pt 'Segoe UI';")
+            self.info_label.setText("Sensor Connected")
+            
+            # Show battery telemetry only when active
+            self.battery_percentage_label.show()
+            self.battery_voltage_label.show()
 
+        # 3. DISCONNECTED State (Idle Red feedback)
         else:
             self.connect_button.setText("Connect")
-            self.connect_button.setStyleSheet(base_style + "color: #1abc9c; border-color: #1abc9c; background-color: #2c2c2c;")
-            self.info_label.setStyleSheet("color: #3498db; font: bold 24pt 'Segoe UI';")
+            self.connect_button.setStyleSheet(base_style + """
+                color: #E0E0E0; 
+                border-color: #E0E0E0; 
+                background-color: transparent;
+            }""")
+            self.connect_button.setDisabled(False)
+            self.info_label.setStyleSheet("color: #FF5252; font: 650 22pt 'Segoe UI';")
+            self.info_label.setText("Sensor Disconnected")
 
-    def showEvent(self, event):
-        """Wyśrodkowanie okna"""
-        super().showEvent(event)
-        screen = QApplication.primaryScreen().availableGeometry()
-        self.move(
-            screen.center().x() - self.width() // 2,
-            screen.center().y() - self.height() // 2
-        )
+    def toggle_connection_state(self):
+        """Dispatches connection or disconnection requests to the BLE threading module."""
+        if not self.connected and not self.connecting:
+            self.connecting = True
+            self.update_ui_state()
+            self.info_label.setText("Connecting to sensor...")
+            # Spawns asynchronous thread to handle BLE scanning and handshaking
+            bluetooth_connection.start_ble_in_thread()
+        elif self.connected:
+            self.info_label.setText("Disconnecting...")
+            bluetooth_connection.disconnect_ble()
+            self.connected = False
+            self.connecting = False
+            self.update_ui_state()
 
+    def update_ble_state(self):
+        """Synchronizes internal flags with the real-time status of the BLE hardware link."""
+        if bluetooth_connection.is_connected(): 
+            self.connected = True
+            self.connecting = False
+        else:
+            if not self.connecting:
+                self.connected = False
+        self.update_ui_state()
 
+    def paintEvent(self, event):
+        """Renders the rounded dialog background with custom anti-aliasing."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        brush = QBrush(QColor(38, 38, 38)) # Dark theme consistency
+        painter.setBrush(brush)
+        painter.setPen(QColor(255, 255, 255))
+        painter.drawRoundedRect(self.rect(), 25, 25)
+
+    def display_battery_condition(self):
+        """Fetches and displays the latest power metrics from the wearable peripheral."""
+        latest = getattr(bluetooth_connection, "latest_values", {})
+
+        battery_percentage
