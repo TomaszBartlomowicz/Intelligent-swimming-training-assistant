@@ -1,7 +1,5 @@
 idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES max30102
-    REQUIRES nvs_flash
-    REQUIRES BLE
+    REQUIRES SEN0344 nvs_flash BLE buzzer esp_adc
 )

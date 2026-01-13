@@ -1,194 +1,206 @@
+/**
+ * @file ble_app.c
+ * @brief Bluetooth Low Energy (BLE) application logic using NimBLE stack
+ */
+
 #include "ble_app.h"
 #include "esp_log.h"
-#include <stdio.h>
+#include "nvs_flash.h"
+#include "nimble/nimble_port.h"
+#include "nimble/nimble_port_freertos.h"
+#include "host/ble_hs.h"
+#include "host/ble_gap.h"
+#include "host/ble_gatt.h"
+#include "esp_nimble_hci.h"
 #include <string.h>
+#include <stdlib.h>
 
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gatts_api.h"
-#include "esp_gatt_common_api.h"
-#include "esp_bt_defs.h"
+#define TAG "BLE_APP"
 
-static const char *TAG = "BLE_APP";
+/* Forward declaration for advertising function */
+static void ble_advertise(void);
 
-// GATT variables
-static uint16_t gatt_service_handle = 0;
-static uint16_t char_handle = 0;
-static esp_gatt_if_t gatts_if_global = 0;
-static uint16_t conn_id_global = 0;
-static bool device_connected = false;
+/* --- BLE State Variables --- */
+static uint8_t gatt_char_val[64];               /**< Buffer for characteristic value */
+static uint16_t gatt_char_handle;               /**< Handle for the GATTS characteristic */
+static uint16_t conn_handle = BLE_HS_CONN_HANDLE_NONE; /**< Active connection handle */
 
-// Advertising parameters
-static esp_ble_adv_params_t adv_params = {
-    .adv_int_min        = 0x20,
-    .adv_int_max        = 0x40,
-    .adv_type           = ADV_TYPE_IND,
-    .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
-    .channel_map        = ADV_CHNL_ALL,
-    .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+/* --- External Linkage (Main Application Functions) --- */
+extern void ble_connection_status(bool connected);
+extern void start_pace_timer(int seconds);
+
+/**
+ * @brief GATT access callback for write operations
+ * Triggered when a client (e.g., Raspberry Pi) writes a value to the characteristic.
+ */
+static int gatt_write_cb(uint16_t conn_handle, uint16_t attr_handle,
+                         struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    char buffer[16];
+    uint16_t len = ctxt->om->om_len;
+    
+    /* Clamp length to prevent buffer overflow */
+    if (len >= sizeof(buffer)) len = sizeof(buffer) - 1;
+
+    /* Copy data from mbuf to flat buffer */
+    ble_hs_mbuf_to_flat(ctxt->om, buffer, len, NULL);
+    buffer[len] = '\0';
+
+    /* Convert received string to integer */
+    int seconds = atoi(buffer);
+    ESP_LOGI(TAG, "Timer value received: %d s", seconds);
+
+    /* Update the system pace timer */
+    start_pace_timer(seconds);
+
+    return 0;
+}
+
+/* --- GATT Service Definition --- */
+static const struct ble_gatt_svc_def gatt_svcs[] = {
+    {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = BLE_UUID16_DECLARE(GATTS_SERVICE_UUID),
+        .characteristics = (struct ble_gatt_chr_def[]) {
+            {
+                .uuid = BLE_UUID16_DECLARE(GATTS_CHAR_UUID),
+                .access_cb = gatt_write_cb,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_char_handle,
+            },
+            {0} /* Mark end of characteristics */
+        }
+    },
+    {0} /* Mark end of services */
 };
 
-// Forward declarations
-static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
-                                esp_ble_gatts_cb_param_t *param);
+/**
+ * @brief GAP Event Callback
+ * Handles connection, disconnection, and advertising events.
+ */
+static int ble_gap_event_cb(struct ble_gap_event *event, void *arg)
+{
+    switch (event->type) {
+    case BLE_GAP_EVENT_CONNECT:
+        if (event->connect.status == 0) {
+            conn_handle = event->connect.conn_handle;
+            ESP_LOGI(TAG, "Connection established!");
+            ble_connection_status(true);
+        } else {
+            /* If connection failed, resume advertising */
+            ble_advertise();
+        }
+        break;
 
+    case BLE_GAP_EVENT_DISCONNECT:
+        ESP_LOGI(TAG, "Disconnected! Reason: %d", event->disconnect.reason);
+        conn_handle = BLE_HS_CONN_HANDLE_NONE;
+        ble_connection_status(false);
+        
+        /* Resume advertising to allow reconnection */
+        ble_advertise();
+        break;
+
+    case BLE_GAP_EVENT_ADV_COMPLETE:
+        ble_advertise();
+        break;
+    }
+    return 0;
+}
+
+/**
+ * @brief Configures and starts BLE advertising
+ */
+static void ble_advertise(void)
+{
+    struct ble_gap_adv_params adv_params = {0};
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND; /* Undirected connectable */
+    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN; /* General discoverable */
+
+    /* Set stable advertising interval (~100ms) */
+    adv_params.itvl_min = 0x00A0; 
+    adv_params.itvl_max = 0x00A0;
+
+    struct ble_hs_adv_fields fields = {0};
+    
+    /* Set advertising flags (Required for compatibility with most BLE scanners) */
+    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
+    
+    /* Set device name in advertising packet */
+    fields.name = (uint8_t *)BLE_DEVICE_NAME;
+    fields.name_len = strlen(BLE_DEVICE_NAME);
+    fields.name_is_complete = 1;
+
+    int rc;
+    rc = ble_gap_adv_set_fields(&fields);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Error setting adv fields; rc=%d", rc);
+        return;
+    }
+
+    /* Start advertising indefinitely */
+    rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
+                           &adv_params, ble_gap_event_cb, NULL);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Error starting advertising; rc=%d", rc);
+    }
+}
+
+/**
+ * @brief Callback triggered when NimBLE stack is synchronized
+ */
+static void ble_on_sync(void)
+{
+    uint8_t addr_type;
+    ble_hs_id_infer_auto(0, &addr_type);
+    ble_advertise();
+}
+
+/**
+ * @brief FreeRTOS task for NimBLE host stack
+ */
+static void ble_app_host_task(void *param)
+{
+    nimble_port_run();
+    nimble_port_freertos_deinit();
+}
+
+/**
+ * @brief Initializes and starts the BLE application
+ */
 void ble_app_start(void)
 {
-    ESP_LOGI(TAG, "Initializing Bluetooth...");
-
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
-    ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
-    ESP_ERROR_CHECK(esp_bluedroid_init());
-    ESP_ERROR_CHECK(esp_bluedroid_enable());
-
-    ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_event_handler));
-    ESP_ERROR_CHECK(esp_ble_gatts_register_callback(gatts_event_handler));
-    ESP_ERROR_CHECK(esp_ble_gatts_app_register(0));
-
-    ESP_LOGI(TAG, "BLE initialized");
+    nimble_port_init();
+    
+    /* Configure NimBLE stack */
+    ble_hs_cfg.sync_cb = ble_on_sync;
+    
+    /* Register GATT services */
+    ble_gatts_count_cfg(gatt_svcs);
+    ble_gatts_add_svcs(gatt_svcs);
+    
+    /* Start the host task in FreeRTOS */
+    nimble_port_freertos_init(ble_app_host_task);
 }
 
-void ble_app_send_data(uint32_t bpm, uint8_t spo2)
+/**
+ * @brief Formats and sends sensor data via BLE Notification
+ * @param bpm Heart Rate in Beats Per Minute
+ * @param spo2 Oxygen Saturation percentage
+ * @param battery_percentage Battery level (0-100)
+ * @param batter_voltage Battery voltage in Volts
+ */
+void ble_app_send_data(uint32_t bpm, uint8_t spo2, uint32_t battery_percentage, float batter_voltage)
 {
-    if (!device_connected) return;
+    if (conn_handle == BLE_HS_CONN_HANDLE_NONE) return;
 
-    char buf[50];
-    int len = snprintf(buf, sizeof(buf), "BPM:%lu,SpO2:%d", bpm, spo2);
+    /* Format data as a comma-separated string */
+    snprintf((char *)gatt_char_val, sizeof(gatt_char_val), "%lu,%u,%lu,%.2f",
+             bpm, spo2, battery_percentage, batter_voltage);
 
-    esp_ble_gatts_send_indicate(
-        gatts_if_global,
-        conn_id_global,
-        char_handle,
-        len,
-        (uint8_t*)buf,
-        false
-    );
+    /* Allocate mbuf for GATT notification */
+    struct os_mbuf *om = ble_hs_mbuf_from_flat(gatt_char_val, strlen((char *)gatt_char_val));
+    
+    /* Push notification to the connected client */
+    ble_gattc_notify_custom(conn_handle, gatt_char_handle, om);
 }
-
-// GAP event handler
-static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
-{
-    switch (event) {
-        case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
-            esp_ble_gap_start_advertising(&adv_params);
-            break;
-        case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
-            if (param->adv_start_cmpl.status == ESP_BT_STATUS_SUCCESS)
-                ESP_LOGI(TAG, "Advertising started");
-            else
-                ESP_LOGE(TAG, "Advertising start failed");
-            break;
-        default:
-            break;
-    }
-}
-
-// GATTS event handler
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
-                                esp_ble_gatts_cb_param_t *param)
-{
-    switch (event) {
-        case ESP_GATTS_REG_EVT:
-        {
-            gatts_if_global = gatts_if;
-
-            esp_ble_gap_set_device_name(BLE_DEVICE_NAME);
-
-            esp_ble_adv_data_t adv_data = {
-                .set_scan_rsp = false,
-                .include_name = true,
-                .include_txpower = true,
-                .appearance = 0x00,
-                .manufacturer_len = 0,
-                .p_manufacturer_data = NULL,
-                .service_uuid_len = 0,
-                .p_service_uuid = NULL,
-                .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-            };
-            esp_ble_gap_config_adv_data(&adv_data);
-
-            esp_gatt_srvc_id_t service_id = {
-                .is_primary = true,
-                .id.inst_id = 0x00,
-                .id.uuid.len = ESP_UUID_LEN_16,
-                .id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID
-            };
-            esp_ble_gatts_create_service(gatts_if, &service_id, GATTS_NUM_HANDLE);
-            break;
-        }
-
-        case ESP_GATTS_CREATE_EVT:
-        {
-            gatt_service_handle = param->create.service_handle;
-
-            esp_ble_gatts_start_service(gatt_service_handle);
-
-            esp_gatt_char_prop_t property = ESP_GATT_CHAR_PROP_BIT_READ |
-                                            ESP_GATT_CHAR_PROP_BIT_WRITE |
-                                            ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-
-            esp_attr_value_t char_val = {
-                .attr_max_len = 50,
-                .attr_len = 0,
-                .attr_value = NULL,
-            };
-
-            esp_bt_uuid_t char_uuid = {
-                .len = ESP_UUID_LEN_16,
-                .uuid.uuid16 = GATTS_CHAR_UUID
-            };
-
-            esp_ble_gatts_add_char(gatt_service_handle,
-                                   &char_uuid,
-                                   ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-                                   property,
-                                   &char_val,
-                                   NULL);
-            break;
-        }
-
-        case ESP_GATTS_ADD_CHAR_EVT:
-        {
-            char_handle = param->add_char.attr_handle;
-            ESP_LOGI(TAG, "Characteristic handle saved: %d", char_handle);
-
-            // Dodanie Client Characteristic Configuration Descriptor (CCCD)
-            esp_bt_uuid_t descr_uuid = {
-                .len = ESP_UUID_LEN_16,
-                .uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG,
-            };
-
-            esp_attr_value_t descr_val = {
-                .attr_max_len = 2,
-                .attr_len = 2,
-                .attr_value = (uint8_t[]){0x00, 0x00},
-            };
-
-            esp_ble_gatts_add_char_descr(gatt_service_handle,
-                                         &descr_uuid,
-                                         ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-                                         &descr_val,
-                                         NULL);
-            break;
-        }
-
-        case ESP_GATTS_CONNECT_EVT:
-            conn_id_global = param->connect.conn_id;
-            device_connected = true;
-            ESP_LOGI(TAG, "Device connected");
-            break;
-
-        case ESP_GATTS_DISCONNECT_EVT:
-            device_connected = false;
-            ESP_LOGI(TAG, "Device disconnected, restarting advertising");
-            esp_ble_gap_start_advertising(&adv_params);
-            break;
-
-        default:
-            break;
-    }
-}
- 
